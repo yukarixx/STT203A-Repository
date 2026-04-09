@@ -1,6 +1,6 @@
 library(shiny)
 library(readxl)
-
+#PHASE 1 1st bullet
 ui <- fluidPage(
   titlePanel("Sleep Health Dashboard"),
   
@@ -69,7 +69,7 @@ server <- function(input, output) {
 }
 
 shinyApp(ui, server)
-
+#PHASE 1 2ND BULLET
 library(dplyr)
 tabPanel("Visualization",
   sidebarLayout(
