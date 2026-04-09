@@ -1,29 +1,70 @@
 library(shiny)
-library(ggplot2)
-library(bslib)
 library(readxl)
 
-ui <- page_sidebar(
-  title = "Sleep, Health, and Lifestyle Dashboard",
-  sidebar = "Sidebar", "Main content area",
-  fileInput("file", "Plase Upload CSV or Excel File", accept = c(".csv", ".xlsx")),
-  verbatimTextOutput("status")
+ui <- fluidPage(
+  titlePanel("Sleep Health Dashboard"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      fileInput("file", "Upload Dataset (.csv or .xlsx)",
+                accept = c(".csv", ".xlsx")),
+      verbatimTextOutput("status")
+    ),
+    
+    mainPanel(
+      h4("Data Preview"),
+      tableOutput("preview")
+    )
+  )
 )
 
 server <- function(input, output) {
-  output$status <- renderPrint({
+  
+  # Reactive value to store data
+  user_data <- reactiveVal(NULL)
+  
+  # Handle file upload
+  observeEvent(input$file, {
     req(input$file)
     
     ext <- tools::file_ext(input$file$name)
-    df <- if(ext == "csv") read.csv(input$file$datapath) else read_excel(input$file$datapath)
+    df <- NULL
     
-    if(nrow(df) < 250) {
-      cat("Need at least 250 rows. Currently has", nrow(df))
-    } else if(ncol(df) < 5) {
-      cat("Need at least 5 columns. Currently has", ncol(df))
-    } else {
-      cat("Valid Dataset!:", nrow(df), "rows,", ncol(df), "columns")
+    # Read file based on extension
+    if(ext == "csv") {
+      df <- read.csv(input$file$datapath)
+    } else if(ext == "xlsx") {
+      df <- read_excel(input$file$datapath)
     }
+    
+    # Validate: Check rows
+    if(nrow(df) < 250) {
+      output$status <- renderPrint({
+        cat("ERROR: File has", nrow(df), "rows. Need at least 250 rows.")
+      })
+      return()
+    }
+    
+    # Validate: Check columns
+    if(ncol(df) < 5) {
+      output$status <- renderPrint({
+        cat("ERROR: File has", ncol(df), "columns. Need at least 5 columns.")
+      })
+      return()
+    }
+    
+    # If validation passes
+    user_data(df)
+    
+    output$status <- renderPrint({
+      cat("SUCCESS!", nrow(df), "rows,", ncol(df), "columns")
+    })
+  })
+  
+  # Show preview of data
+  output$preview <- renderTable({
+    req(user_data())
+    head(user_data(), 10)
   })
 }
 
