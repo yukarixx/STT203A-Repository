@@ -108,28 +108,36 @@ tabPanel("Visualization",
 )
 df <- df %>%
   mutate(across(where(is.character), as.factor))
+
+# Update dropdown choices
 updateSelectInput(session, "x_var", choices = c("(Select variable)" = "", names(df)))
 updateSelectInput(session, "y_var", choices = c("(None)" = "", names(df)[sapply(df, is.numeric)]))
 updateSelectInput(session, "color_var", choices = c("(None)" = "", names(df)[sapply(df, is.factor)]))
+
+# Add this output to your server (after the preview output)
+
 output$var_types_display <- renderPrint({
   req(user_data())
   df <- user_data()
-cat(":bar_chart: VARIABLE TYPE DETECTION\n")
-  cat("━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
-numeric_vars <- names(df)[sapply(df, is.numeric)]
-  cat(":1234: NUMERIC variables (", length(numeric_vars), "):\n")
+  
+  cat("📊 VARIABLE TYPE DETECTION\n")
+  cat("━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
+  
+  numeric_vars <- names(df)[sapply(df, is.numeric)]
+  cat("🔢 NUMERIC variables (", length(numeric_vars), "):\n")
   for(var in numeric_vars) {
     cat("   • ", var, "\n")
   }
   
-  cat("\n:label: CATEGORICAL variables (", sum(sapply(df, is.factor)), "):\n")
+  cat("\n🏷️ CATEGORICAL variables (", sum(sapply(df, is.factor)), "):\n")
   categorical_vars <- names(df)[sapply(df, is.factor)]
   for(var in categorical_vars) {
     cat("   • ", var, " (", length(levels(df[[var]])), " unique values)\n")
   }
 })
 
-# Add this output for dynamic plotting
+# Add this output to your server
+
 output$dynamic_plot <- renderPlot({
   req(user_data(), input$x_var)
   
