@@ -69,3 +69,113 @@ server <- function(input, output) {
 }
 
 shinyApp(ui, server)
+
+library(dplyr)
+tabPanel("Visualization",
+  sidebarLayout(
+    sidebarPanel(
+      h4("Map Variables to Axes"),
+      
+      selectInput("x_var", "X-axis Variable", 
+                 choices = c("(Select variable)" = "")),
+      
+      selectInput("y_var", "Y-axis Variable (Numeric)", 
+                 choices = c("(None)" = "")),
+      
+      selectInput("color_var", "Color/Group Variable (Categorical)", 
+                 choices = c("(None)" = "")),
+      
+      selectInput("plot_type", "Plot Type",
+                 choices = c(
+                   "Scatter Plot" = "scatter",
+                   "Bar Plot" = "bar",
+                   "Box Plot" = "box",
+                   "Histogram" = "histogram"
+                 )),
+      
+      hr(),
+      helpText("Note: Scatter/Box plots need numeric Y-axis")
+    ),
+    
+    mainPanel(
+      h4("Variable Types Detected"),
+      verbatimTextOutput("var_types_display"),
+      br(),
+      h4("Interactive Plot"),
+      plotOutput("dynamic_plot", height = "400px")
+    )
+  )
+)
+df <- df %>%
+  mutate(across(where(is.character), as.factor))
+updateSelectInput(session, "x_var", choices = c("(Select variable)" = "", names(df)))
+updateSelectInput(session, "y_var", choices = c("(None)" = "", names(df)[sapply(df, is.numeric)]))
+updateSelectInput(session, "color_var", choices = c("(None)" = "", names(df)[sapply(df, is.factor)]))
+output$var_types_display <- renderPrint({
+  req(user_data())
+  df <- user_data()
+cat(":bar_chart: VARIABLE TYPE DETECTION\n")
+  cat("━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
+numeric_vars <- names(df)[sapply(df, is.numeric)]
+  cat(":1234: NUMERIC variables (", length(numeric_vars), "):\n")
+  for(var in numeric_vars) {
+    cat("   • ", var, "\n")
+  }
+  
+  cat("\n:label: CATEGORICAL variables (", sum(sapply(df, is.factor)), "):\n")
+  categorical_vars <- names(df)[sapply(df, is.factor)]
+  for(var in categorical_vars) {
+    cat("   • ", var, " (", length(levels(df[[var]])), " unique values)\n")
+  }
+})
+
+# Add this output for dynamic plotting
+output$dynamic_plot <- renderPlot({
+  req(user_data(), input$x_var)
+  
+  df <- user_data()
+  x_var <- input$x_var
+  y_var <- input$y_var
+  color_var <- input$color_var
+  plot_type <- input$plot_type
+  
+  # Create plot based on type
+  if(plot_type == "scatter") {
+    req(y_var != "")
+    if(color_var != "" && color_var != "(None)") {
+      ggplot(df, aes(x = .data[[x_var]], y = .data[[y_var]], color = .data[[color_var]])) +
+        geom_point() + theme_minimal()
+    } else {
+      ggplot(df, aes(x = .data[[x_var]], y = .data[[y_var]])) +
+        geom_point() + theme_minimal()
+    }
+    
+  } else if(plot_type == "bar") {
+    if(color_var != "" && color_var != "(None)") {
+      ggplot(df, aes(x = .data[[x_var]], fill = .data[[color_var]])) +
+        geom_bar() + theme_minimal()
+    } else {
+      ggplot(df, aes(x = .data[[x_var]])) +
+        geom_bar() + theme_minimal()
+    }
+    
+  } else if(plot_type == "box") {
+    req(y_var != "")
+    if(color_var != "" && color_var != "(None)") {
+      ggplot(df, aes(x = .data[[x_var]], y = .data[[y_var]], fill = .data[[color_var]])) +
+        geom_boxplot() + theme_minimal()
+    } else {
+      ggplot(df, aes(x = .data[[x_var]], y = .data[[y_var]])) +
+        geom_boxplot() + theme_minimal()
+    }
+    
+  } else if(plot_type == "histogram") {
+    if(color_var != "" && color_var != "(None)") {
+      ggplot(df, aes(x = .data[[x_var]], fill = .data[[color_var]])) +
+        geom_histogram(bins = 30, alpha = 0.7) + theme_minimal()
+    } else {
+      ggplot(df, aes(x = .data[[x_var]])) +
+        geom_histogram(bins = 30) + theme_minimal()
+    }
+  }
+})
